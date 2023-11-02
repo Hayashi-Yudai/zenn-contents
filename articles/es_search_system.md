@@ -1,5 +1,5 @@
 ---
-title: "Elasticsearchを用いた検索ランキング作成"
+title: "Elasticsearchを用いた検索ランキング作成と評価"
 emoji: "🤖"
 type: "tech"
 topics: ["Elasticsearch", "検索", "機械学習"]
