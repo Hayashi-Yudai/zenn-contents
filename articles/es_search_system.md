@@ -3,7 +3,7 @@ title: "ElasticsearchとXGBoostを組み合わせた検索ランキング作成�
 emoji: "🤖"
 type: "tech"
 topics: ["Elasticsearch", "検索", "機械学習"]
-published: false
+published: true
 ---
 
 最近検索周りで「[機械学習による検索ランキング改善ガイド](www.amazon.co.jp/dp/4814400306)」という本が出版されて気になって読んでみたので、それを読んで勉強しつつ手を動かしてみてわかったことや感想を紹介してみようと思います。
