@@ -3,7 +3,7 @@ title: "LangChainを使ってgitの差分からドキュメントを更新する
 emoji: "📄"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics: [LangChain, ChatGPT]
-published: false
+published: true
 ---
 
 「[ChatGPT/LangChainによるチャットシステム構築\[実践\]入門](https://www.amazon.co.jp/dp/4297138395)」という本を読んで学んだ知識を使って、自分で簡単なツールを作ってみたのでそれについて紹介しようと思います。作ってみたツールは、`git diff` の結果を入力として、この差分によって更新が必要になるドキュメントを検知して書き換えるというものです。
