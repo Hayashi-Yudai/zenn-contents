@@ -1,5 +1,5 @@
 ---
-title: "LangChainを使ってgitの差分からドキュメントを更新する"
+title: "ChatGPT/LangChainを使ってgitの差分からドキュメントを自動で更新する"
 emoji: "📄"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics: [LangChain, ChatGPT]
