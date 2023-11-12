@@ -3,7 +3,7 @@ title: "VRAMが少ない環境でLLMを効率的にfine-tuneしてベクトル�
 emoji: "🤖"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics: ["LLM", "ANN", "Python", "ベクトル検索"]
-published: false
+published: true
 ---
 
 LLM周りの基本的な知識とTransformersをもっと扱えるようになりたくて、最近 [大規模言語モデル入門](https://www.amazon.co.jp/dp/B0C9P7K6VH)を読んでいたのですが、その中で「メモリ効率の良いファインチューニング」という節が面白くて色々自分で試してみていたりしました。ここでは、自分の手元で文章の類似度を計算するモデルをファインチューンして作って見たので、それについて書きたいと思います。
