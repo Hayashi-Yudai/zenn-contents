@@ -3,7 +3,7 @@ title: "強化学習における学習安定化の工夫を試してみた"
 emoji: "📑"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics: ["強化学習", "機械学習", "Python"]
-published: false
+published: true
 ---
 
 機械学習スタートアップシリーズから出ている「[Pythonで学ぶ強化学習](https://www.amazon.co.jp/dp/4065142989)」という本を読んで強化学習に入門してみました。実際に自分で手を動かして学んだことなどを書いていきたいと思います。
