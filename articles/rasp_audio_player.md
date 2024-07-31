@@ -40,5 +40,5 @@ OSをSDカードにインストールするのには Raspberry Pi Imager を使�
 
 必要最小限の構成で始めたので、まずは音を流せるようにすることから始めなければいけません。WindowsやMacではなんらかのMedia Playerが標準で入っているのでこのあたりは普段はあまり意識することがないかもしれません。
 
-![](/images/rasp_audio_player/mac_media_player.png =200x)
+![](/images/rasp_audio_player/mac_media_player.png =400x)
 *Macに標準搭載されているプレイヤー(?)*
