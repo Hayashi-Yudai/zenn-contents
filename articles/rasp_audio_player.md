@@ -1,5 +1,5 @@
 ---
-title: ""
+title: "ラズパイでオーディオプレイヤー"
 emoji: "🔥"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics: ["RaspberryPi", "Audio", "MPD"]
