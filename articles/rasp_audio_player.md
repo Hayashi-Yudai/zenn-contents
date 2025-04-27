@@ -128,6 +128,7 @@ ctl.!default {
 ```
 
 ```bash
+# /etc/mpd.conf
 audio_output {
     type "alsa"
     name "My ALSA Device"
