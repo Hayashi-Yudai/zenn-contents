@@ -3,7 +3,7 @@ title: "NVIDIA-Nemotron-Nano-9B-v2-Japanese から Embedding モデルを作る"
 emoji: "🔥"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics: ["LLM", "Embedding", "NVIDIA-Nemotron-Nano-9B-v2-Japanese"]
-published: false
+published: true
 ---
 
 NVIDIA が公開した [NVIDIA-Nemotron-Nano-9B-v2-Japanese](https://huggingface.co/nvidia/NVIDIA-Nemotron-Nano-9B-v2-Japanese) は、Qwen3 の 3〜6 倍ものスループットを持つ日本語 LLM として注目を集めています。現状ではチャット形式での利用のためのモデルのみが公開されており Embedding モデルは提供されていないという状況になっています。
