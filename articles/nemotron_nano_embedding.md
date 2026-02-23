@@ -6,9 +6,9 @@ topics: ["LLM", "Embedding", "NVIDIA-Nemotron-Nano-9B-v2-Japanese"]
 published: false
 ---
 
-NVIDIA が公開した [NVIDIA-Nemotron-Nano-9B-v2-Japanese](https://huggingface.co/nvidia/NVIDIA-Nemotron-Nano-9B-v2-Japanese) は、Qwen3 の 3〜6 倍ものスループットを持つ日本語 LLM として注目を集めています。ただ、現状では Embedding モデルは提供されていません。
+NVIDIA が公開した [NVIDIA-Nemotron-Nano-9B-v2-Japanese](https://huggingface.co/nvidia/NVIDIA-Nemotron-Nano-9B-v2-Japanese) は、Qwen3 の 3〜6 倍ものスループットを持つ日本語 LLM として注目を集めています。現状ではチャット形式での利用のためのモデルのみが公開されており Embedding モデルは提供されていないという状況になっています。
 
-私は個人的に記事推薦のモデルを作って運用していて、自然言語を Embedding に変換して機械学習モデルの特徴量として使っています。Nemotron ベースの高速な Embedding モデルがあれば、推論速度と推薦性能の両方を改善できるのではないか——ということで、自分で作ってみることにしました。
+私は個人的に記事推薦のモデルを作って運用していて、自然言語を Embedding に変換して機械学習モデルの特徴量として使っています。Nemotron ベースの高速な Embedding モデルがあれば、推論速度と推薦性能の両方を改善できるのではないか——ということで、自分で作ってみることにしました。この記事では、Embedding モデルの学習とパブリックデータセットでの評価の部分までを書きます。
 
 実験コードは以下のリポジトリにまとめています。
 
@@ -16,8 +16,7 @@ https://github.com/Hayashi-Yudai/Nemotron-nano-embedding-train
 
 ## どうやって Embedding モデルを作るか
 
-
-今回のアプローチはシンプルです。
+以下のような手順でモデルの学習を行いました。この学習手順自体は一般的によく知られている手法だと思っています。
 
 **1. LLM に文を入力し、最終層の hidden_state を取得する**
 
@@ -59,13 +58,13 @@ labels = torch.arange(logits.size(0), device=logits.device)
 loss = 0.5 * (F.cross_entropy(logits, labels) + F.cross_entropy(logits.T, labels))
 ```
 
-バッチ内の他のペアが自動的にネガティブサンプルになるので、バッチサイズが大きいほど多くの負例から学習できます。
+データ内のペア(A, B)のみがポジティブサンプル、バッチ内の他のテキストは全てネガティブサンプルという扱いになります。
 
 ## 実験設計
 
 ### ベースライン
 
-比較対象には Qwen3-Embedding (0.6B, 4B, 8B) を使いました。日本語対応の Embedding モデルとしては現状トップクラスの性能です。汎用 LLM から作った Embedding モデルが、専用に学習されたモデルとどこまで戦えるかを見てみます。
+比較対象には Qwen3-Embedding (0.6B, 4B, 8B) を使いました。日本語対応の Embedding モデルで、最近よく利用されているのを目にすることが多いモデルです。汎用 LLM から作った Embedding モデルが、専用に学習されたモデルとどこまで戦えるかを見てみます。
 
 ### データセット
 
@@ -77,7 +76,7 @@ loss = 0.5 * (F.cross_entropy(logits, labels) + F.cross_entropy(logits.T, labels
 ### 学習手法
 
 - **LoRA (r=16, alpha=32)**: 9B のモデルをフル学習するのは現実的ではないので、LoRA でパラメータ効率よく学習します。attention と FFN の projection 層 (`q_proj`, `k_proj`, `v_proj`, `o_proj`, `gate_proj`, `up_proj`, `down_proj`) にアダプタを挿入しています。
-- **Contrastive Learning (In-batch Negatives)**: 同じバッチ内の他のペアをネガティブサンプルとして使う対照学習です。バッチ内の文 A と文 B のコサイン類似度行列を計算し、対角要素（正しいペア）のスコアが高くなるように学習します。バッチサイズが大きいほどネガティブサンプルが増えて効果的なので、今回は 256 で学習しました。
+- **Contrastive Learning (In-batch Negatives)**: 同じバッチ内の他のペアをネガティブサンプルとして使う対照学習です。バッチ内の文 A と文 B のコサイン類似度行列を計算し、対角要素（正しいペア）のスコアが高くなるように学習します。mMARCOの学習時には32, JSTSの学習時には256を利用しました。これは単純に使っているGPUで利用できる最大長にしたという設定です。
 
 学習は 2 段階で行いました。まず mMARCO で大まかな検索能力を学習し、その後 JSTS で意味類似度を仕上げるという流れです。
 
