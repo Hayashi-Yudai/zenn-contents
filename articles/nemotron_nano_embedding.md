@@ -80,6 +80,12 @@ loss = 0.5 * (F.cross_entropy(logits, labels) + F.cross_entropy(logits.T, labels
 
 学習は 2 段階で行いました。まず mMARCO で大まかな検索能力を学習し、その後 JSTS で意味類似度を仕上げるという流れです。
 
+### 学習環境
+
+- GPU: A100 (80 GB) x 1
+- RAM: 170 GB
+- Python 3.12
+
 ## 結果
 
 JSTS の validation split (1,457 件) で評価しました。各文ペアの Embedding 間のコサイン類似度を 0〜5 のスコアにマッピングし、正解ラベルと比較しています。
@@ -88,8 +94,8 @@ Nemotron については、2 段階学習の効果を確認するために、JST
 
 | モデル                  | 学習              |  Spearman |   Pearson |       MAE |
 | ----------------------- | ----------------- | --------: | --------: | --------: |
-| Nemotron-Nano-9B (ours) | JSTS のみ         |     0.813 |     0.869 |     2.084 |
-| Nemotron-Nano-9B (ours) | mMARCO 50k → JSTS | **0.832** | **0.882** |     2.098 |
+| Nemotron-Nano-9B (今回学習したもの)| JSTS のみ         |     0.813 |     0.869 |     2.084 |
+| Nemotron-Nano-9B (今回学習したもの) | mMARCO 50k → JSTS | **0.832** | **0.882** |     2.098 |
 | Qwen3-Embedding-0.6B    | 事前学習済み      |     0.807 |     0.854 | **1.835** |
 | Qwen3-Embedding-4B      | 事前学習済み      |     0.829 |     0.872 |     1.866 |
 | Qwen3-Embedding-8B      | 事前学習済み      |     0.837 |     0.879 |     1.953 |
