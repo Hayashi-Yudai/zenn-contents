@@ -8,32 +8,71 @@ published: false
 
 NVIDIA が公開した [NVIDIA-Nemotron-Nano-9B-v2-Japanese](https://huggingface.co/nvidia/NVIDIA-Nemotron-Nano-9B-v2-Japanese) は、Qwen3 の 3〜6 倍ものスループットを持つ日本語 LLM として注目を集めています。ただ、現状では Embedding モデルは提供されていません。
 
-私は個人的に記事推薦のモデルを作って運用していて、自然言語を Embedding に変換して機械学習モデルの特徴量に入れるということをしています。もし Nemotron ベースの高速な Embedding モデルがあれば、より速く性能の高い記事推薦ができるのではないか——ということで、自分で作ってみることにしました。
+私は個人的に記事推薦のモデルを作って運用していて、自然言語を Embedding に変換して機械学習モデルの特徴量として使っています。Nemotron ベースの高速な Embedding モデルがあれば、推論速度と推薦性能の両方を改善できるのではないか——ということで、自分で作ってみることにしました。
 
-実験コードはこちらのリポジトリにまとめています。
+実験コードは以下のリポジトリにまとめています。
 
 https://github.com/Hayashi-Yudai/Nemotron-nano-embedding-train
 
 ## どうやって Embedding モデルを作るか
 
 
-今回のアプローチはシンプルで、LLM の最終層から得られる hidden_state を Mean Pooling で集約して固定長のベクトルにし、それを文全体の Embedding として使います。
-ただし、LLM をそのまま使っただけでは Embedding としてうまく機能しません。LLM は「次のトークンを予測する」という目的で学習されているため、各トークンの hidden_state は直前までの文脈から次に何が来るかを表現するように最適化されています。文全体の意味を一つのベクトルにまとめるという用途には合っていないわけです。実際、学習前のモデルで類似度を計算してみると、意味が全く異なる文でも高い類似度が出てしまうことがあります。
+今回のアプローチはシンプルです。
 
-そこで、意味が近い文どうしのベクトルが近く、遠い文どうしは離れるように対照学習で追加学習を行います。
+**1. LLM に文を入力し、最終層の hidden_state を取得する**
+
+LM ヘッドは使わず、backbone だけを通して hidden_state を取り出します。
+
+```python
+backbone = get_backbone_model(model)  # LM ヘッドを除いた部分
+outputs = backbone(
+    input_ids=encoded["input_ids"],
+    attention_mask=encoded["attention_mask"],
+)
+```
+
+**2. Mean Pooling で固定長のベクトル（= Embedding）にする**
+
+各トークンの hidden_state を attention_mask で重み付けして平均を取ります。
+
+```python
+def mean_pool(last_hidden_state, attention_mask):
+    mask = attention_mask.unsqueeze(-1).to(last_hidden_state.dtype)
+    summed = (last_hidden_state * mask).sum(dim=1)
+    counts = mask.sum(dim=1).clamp(min=1e-9)
+    return summed / counts
+```
+
+**3. 対照学習で追加学習する**
+
+LLM は「次のトークンを予測する」ために学習されているので、hidden_state をそのままプーリングしても文の意味はうまく表現できません。学習前のモデルで試すと、意味が全く異なる文でも高い類似度が出てしまいます。
+
+そこで、文ペア (A, B) のバッチに対してコサイン類似度の行列を作り、正しいペア（対角要素）のスコアが最大になるように学習します。
+
+```python
+a_emb = F.normalize(encode_texts(model, tokenizer, text_a, cfg), dim=-1)
+b_emb = F.normalize(encode_texts(model, tokenizer, text_b, cfg), dim=-1)
+
+logits = (a_emb @ b_emb.T) / cfg.temperature
+labels = torch.arange(logits.size(0), device=logits.device)
+
+loss = 0.5 * (F.cross_entropy(logits, labels) + F.cross_entropy(logits.T, labels))
+```
+
+バッチ内の他のペアが自動的にネガティブサンプルになるので、バッチサイズが大きいほど多くの負例から学習できます。
 
 ## 実験設計
 
 ### ベースライン
 
-比較対象には Qwen3-Embedding Family (0.6B, 4B, 8B) を使いました。日本語対応の Embedding モデルとしては現状トップクラスの性能を持つモデルです。9B パラメータの汎用 LLM から作った Embedding モデルが、専用に学習された Embedding モデルとどこまで戦えるかを見てみます。
+比較対象には Qwen3-Embedding (0.6B, 4B, 8B) を使いました。日本語対応の Embedding モデルとしては現状トップクラスの性能です。汎用 LLM から作った Embedding モデルが、専用に学習されたモデルとどこまで戦えるかを見てみます。
 
 ### データセット
 
 学習・評価には以下の 2 つのデータセットを使いました。
 
-- **mMARCO Japanese**: 大規模な情報検索データセット。クエリと関連パッセージのペアが含まれており、ここから 50,000 件をサンプリングして使いました。検索タスクに必要な「クエリと関連文書を近づける」能力をまず身につけさせるのが狙いです。
-- **JSTS (Japanese Semantic Textual Similarity)**: 日本語の文ペアに 0〜5 の類似度スコアが付いたデータセットです。文の意味的な近さを細かく捉える能力を学習するために使います。評価もこのデータセットの validation split で行いました。
+- **mMARCO Japanese**: 大規模な情報検索データセットで、クエリと関連パッセージのペアが含まれています。ここから 50,000 件をサンプリングして使いました。「クエリと関連文書を近づける」という汎用的な検索能力をまず身につけさせるのが狙いです。
+- **JSTS (Japanese Semantic Textual Similarity)**: 日本語の文ペアに 0〜5 の類似度スコアが付いたデータセットです。文の意味的な近さを細かく捉える能力の学習と、評価の両方に使いました。
 
 ### 学習手法
 
@@ -44,9 +83,9 @@ https://github.com/Hayashi-Yudai/Nemotron-nano-embedding-train
 
 ## 結果
 
-JSTS に用意されている評価用データセット (1,457 件) を使って評価しました。各文ペアの Embedding 間のコサイン類似度を計算し、それを 0〜5 のスコアにマッピングして正解ラベルと比較しています。
+JSTS の validation split (1,457 件) で評価しました。各文ペアの Embedding 間のコサイン類似度を 0〜5 のスコアにマッピングし、正解ラベルと比較しています。
 
-Nemotron については、JSTS だけで学習したモデルと、mMARCO → JSTS の 2 段階で学習したモデルの両方を載せています。2 段階学習の効果がどれくらいあるかを見るためです。
+Nemotron については、2 段階学習の効果を確認するために、JSTS のみで学習したモデルと mMARCO → JSTS の 2 段階で学習したモデルの両方を載せています。
 
 | モデル                  | 学習              |  Spearman |   Pearson |       MAE |
 | ----------------------- | ----------------- | --------: | --------: | --------: |
@@ -56,9 +95,9 @@ Nemotron については、JSTS だけで学習したモデルと、mMARCO → J
 | Qwen3-Embedding-4B      | 事前学習済み      |     0.829 |     0.872 |     1.866 |
 | Qwen3-Embedding-8B      | 事前学習済み      |     0.837 |     0.879 |     1.953 |
 
-いくつかわかったことがあります。
+結果からいくつかのことがわかりました。
 
-- **2 段階学習の効果が大きい**: JSTS だけで学習したモデルと比べて、mMARCO で事前学習してから JSTS で仕上げたモデルは Spearman が 0.813 → 0.832 と大きく改善しました。汎用的な検索能力をまず身につけてから意味類似度を学習するという順番が効いているようです。
-- **Qwen3-Embedding-8B に迫る性能**: 専用の Embedding モデルである Qwen3-Embedding-8B の Spearman 0.837 に対して 0.832 とほぼ同等の水準まで来ています。Pearson では 0.882 と上回りました。
-- **MAE は高め**: 一方で MAE（予測スコアと正解の平均絶対誤差）は Qwen3 系より大きくなっています。順位相関は高いものの、スコアの絶対値の予測精度には改善の余地がありそうです。
+- **2 段階学習の効果が大きい**: mMARCO で事前学習してから JSTS で仕上げたモデルは、JSTS だけで学習したモデルと比べて Spearman が 0.813 → 0.832 と大きく改善しました。汎用的な検索能力をまず身につけてから意味類似度を学習する、という順番が効いているようです。
+- **Qwen3-Embedding-8B に迫る性能**: Qwen3-Embedding-8B の Spearman 0.837 に対して 0.832 と、ほぼ同等の水準です。Pearson では 0.882 とこちらが上回りました。
+- **MAE は高め**: 一方で MAE（予測スコアと正解の平均絶対誤差）は Qwen3 系より大きくなっています。順位の相関は高いものの、スコアの絶対値についてはまだ改善の余地がありそうです。
 
