@@ -75,7 +75,7 @@ loss = 0.5 * (F.cross_entropy(logits, labels) + F.cross_entropy(logits.T, labels
 
 ### 学習手法
 
-- **LoRA (r=16, alpha=32)**: 9B のモデルをフル学習するのは現実的ではないので、LoRA でパラメータ効率よく学習します。attention と FFN の projection 層 (`q_proj`, `k_proj`, `v_proj`, `o_proj`, `gate_proj`, `up_proj`, `down_proj`) にアダプタを挿入しています。
+- **LoRA (r=16, alpha=32)**: LoRAを利用して学習を行いました。attention と FFN の projection 層 (`q_proj`, `k_proj`, `v_proj`, `o_proj`, `gate_proj`, `up_proj`, `down_proj`) にアダプタを挿入しています。
 - **Contrastive Learning (In-batch Negatives)**: 同じバッチ内の他のペアをネガティブサンプルとして使う対照学習です。バッチ内の文 A と文 B のコサイン類似度行列を計算し、対角要素（正しいペア）のスコアが高くなるように学習します。mMARCOの学習時には32, JSTSの学習時には256を利用しました。これは単純に使っているGPUで利用できる最大長にしたという設定です。
 
 学習は 2 段階で行いました。まず mMARCO で大まかな検索能力を学習し、その後 JSTS で意味類似度を仕上げるという流れです。
@@ -106,3 +106,6 @@ Nemotron については、2 段階学習の効果を確認するために、JST
 - **Qwen3-Embedding-8B に迫る性能**: Qwen3-Embedding-8B の Spearman 0.837 に対して 0.832 と、ほぼ同等の水準です。Pearson では 0.882 とこちらが上回りました。
 - **MAE は高め**: 一方で MAE（予測スコアと正解の平均絶対誤差）は Qwen3 系より大きくなっています。順位の相関は高いものの、スコアの絶対値についてはまだ改善の余地がありそうです。
 
+## まとめ
+
+NVIDIA-Nemotron-Nano-9B-v2-Japanese を追加学習して Embedding 計算に利用できるようにしてみました。使っているデータも少量で、学習もシンプルなことしかしていませんが Qwen3-Embedding-8B と同等程度の性能が出ることがわかりました。Qwen の方は別に日本語特化のモデルというわけではないので、ちゃんとやれば NVIDIA-Nemotron-Nano-9B-v2-Japanese の方は日本語における性能は高くなるのではないかと考えています。技術記事の推薦の特徴量生成に使えないか、という点をモチベーションに実験していたので、今後は技術系のワードに対して性能がちゃんと出るのか、英語が混ざっているテキストに対しても性能が出るのか、という点の評価はしていきたいと思っています。
